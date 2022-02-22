@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+source "$PLUGIN_ENABLED_PATH/common/functions"
+APP="$1"
+verify_app_name "$APP"
+IMAGE=$(get_app_image_name $APP)
+FILE_ROOT="$DOKKU_ROOT/$APP/DOKKU_BUILD_FILES"
+
+DOCKER_BIN="${DOCKER_BIN:=docker}"
+
+if [[ -d "$FILE_ROOT" ]] && [[ -n $(ls -A "$FILE_ROOT") ]]; then
+  dokku_log_info1 "Adding build files to build environment ..."
+  shopt -s dotglob # include hidden files
+  for path in $FILE_ROOT/*; do
+    file=$(basename $path)
+    dokku_log_verbose "- Copying $file"
+    id=$("$DOCKER_BIN" run -i -a stdin $IMAGE /bin/bash -c "cat > /app/$file" < "$path")
+    test "$("$DOCKER_BIN" wait $id)" -eq 0
+    "$DOCKER_BIN" commit $id $IMAGE > /dev/null
+    "$DOCKER_BIN" stop $id > /dev/null 2>&1 || true
+    "$DOCKER_BIN" kill $id > /dev/null 2>&1 || true
+  done
+fi
