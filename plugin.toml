@@ -1,4 +1,4 @@
 [plugin]
 description = "Allows build files to be injected before build"
-version = "0.1.0"
+version = "0.2.0"
 [plugin.config]
